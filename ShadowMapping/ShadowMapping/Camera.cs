@@ -6,7 +6,7 @@ namespace ShadowMapping;
 
 using System;
 using System.Drawing;
-using OpenTK.Mathematics;
+using System.Numerics;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 
@@ -31,20 +31,20 @@ public sealed class Camera
         this.Transform = new Transform()
         {
             Position = new Vector3(0, 50, 0),
-            Rotation = Quaternion.FromAxisAngle(Vector3.UnitY, MathHelper.DegreesToRadians(45.0f)),
+            Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, OpenTK.Mathematics.MathHelper.DegreesToRadians(45.0f)),
         };
 
         this.isLocked = false;
     }
 
-    public Matrix4 Projection
+    public Matrix4x4 Projection
     {
-        get { return Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(70.0f), this.width / this.height, 0.1f, 1000.0f); }
+        get { return Matrix4x4.CreatePerspectiveFieldOfView(OpenTK.Mathematics.MathHelper.DegreesToRadians(70.0f), this.width / this.height, 0.1f, 1000.0f); }
     }
 
     public Transform Transform { get; }
 
-    public Matrix4 View
+    public Matrix4x4 View
     {
         get { return this.Transform.CreateViewMatrix(Vector3.UnitY); }
     }
@@ -104,7 +104,7 @@ public sealed class Camera
 
         if (mouse.IsButtonReleased(MouseButton.Right))
         {
-            this.window.MousePosition = new Vector2(this.CenterPosition.X, this.CenterPosition.Y);
+            this.window.MousePosition = new OpenTK.Mathematics.Vector2(this.CenterPosition.X, this.CenterPosition.Y);
             this.isLocked = true;
         }
 
@@ -117,17 +117,17 @@ public sealed class Camera
 
             if (canRotateX)
             {
-                this.Transform.Rotate(this.Transform.Left, -MathHelper.DegreesToRadians(deltaPosition.Y * this.speed));
+                this.Transform.Rotate(this.Transform.Left, -OpenTK.Mathematics.MathHelper.DegreesToRadians(deltaPosition.Y * this.speed));
             }
 
             if (canRotateY)
             {
-                this.Transform.Rotate(Vector3.UnitY, -MathHelper.DegreesToRadians(deltaPosition.X * this.speed));
+                this.Transform.Rotate(Vector3.UnitY, -OpenTK.Mathematics.MathHelper.DegreesToRadians(deltaPosition.X * this.speed));
             }
 
             if (canRotateX || canRotateY)
             {
-                this.window.MousePosition = new Vector2(
+                this.window.MousePosition = new OpenTK.Mathematics.Vector2(
                     this.CenterPosition.X,
                     this.CenterPosition.Y);
             }

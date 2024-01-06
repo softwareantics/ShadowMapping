@@ -15,7 +15,7 @@ public struct MeshVertex : IEquatable<MeshVertex>
 
     public Vector3 Position { get; set; }
 
-    public Vector3 Color { get; set; }
+    public Vector3 Normal { get; set; }
 
     public Vector2 TextureCoordinate { get; set; }
 
@@ -32,7 +32,7 @@ public struct MeshVertex : IEquatable<MeshVertex>
     public readonly bool Equals(MeshVertex other)
     {
         return this.Position == other.Position &&
-               this.Color == other.Color &&
+               this.Normal == other.Normal &&
                this.TextureCoordinate == other.TextureCoordinate;
     }
 
@@ -46,7 +46,7 @@ public struct MeshVertex : IEquatable<MeshVertex>
         const int accumulator = 17;
 
         return (this.Position.GetHashCode() * accumulator) +
-               (this.Color.GetHashCode() * accumulator) +
+               (this.Normal.GetHashCode() * accumulator) +
                (this.TextureCoordinate.GetHashCode() * accumulator);
     }
 }

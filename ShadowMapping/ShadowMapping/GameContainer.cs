@@ -5,140 +5,171 @@
 namespace ShadowMapping;
 
 using System;
-using System.Drawing;
 using System.IO;
-using ImGuiNET;
+using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
-using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 
 public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
     : GameWindow(gameWindowSettings, nativeWindowSettings)
 {
+    private const int ShadowHeight = 1024;
+
+    private const int ShadowWidth = 1024;
+
     private Camera camera;
 
-    private ImGuiController controller;
+    private int cubeVAO;
 
-    private ShaderProgram debugShaderProgram;
+    private ShaderProgram debugShader;
 
-    private ShaderProgram depthShaderProgram;
+    private int depthMap;
 
-    private Texture depthTexture;
+    private int depthMapFBO;
 
-    private System.Numerics.Vector3 lightPosition;
+    private ShaderProgram depthShader;
 
-    private Mesh planeMesh;
+    private Vector3 lightPosition;
 
-    private Mesh quadMesh;
+    private int planeVAO;
 
-    private RenderTarget renderTarget;
+    private int quadVAO;
 
-    private ShaderProgram shaderProgram;
+    private int quadVBO;
 
-    private Texture texture;
+    private ShaderProgram shader;
+
+    private Texture woodTexture;
 
     protected override void OnLoad()
     {
-        float fieldDepth = 10.0f;
-        float fieldWidth = 10.0f;
-
-        MeshVertex[] vertices =
-        [
-            new MeshVertex()
-            {
-                Position = new Vector3(-fieldWidth, 0.0f, -fieldDepth),
-                TextureCoordinate = new Vector2(0.0f),
-                Color = new Vector3(1, 1, 1),
-            },
-
-            new MeshVertex()
-            {
-                Position = new Vector3(-fieldWidth, 0.0f, fieldDepth * 3),
-                TextureCoordinate = new Vector2(0.0f, 1.0f),
-                Color = new Vector3(1, 1, 1),
-            },
-
-            new MeshVertex()
-            {
-                Position = new Vector3(fieldWidth * 3, 0.0f, -fieldDepth),
-                TextureCoordinate = new Vector2(1.0f, 0.0f),
-                Color = new Vector3(1, 1, 1),
-            },
-
-            new MeshVertex()
-            {
-                Position = new Vector3(fieldWidth * 3, 0.0f, fieldDepth * 3),
-                TextureCoordinate = new Vector2(1.0f, 1.0f),
-                Color = new Vector3(1, 1, 1),
-            },
-        ];
-
-        int[] indices =
-        [
-            0,
-            1,
-            2,
-            2,
-            1,
-            3
-        ];
-
-        MeshVertex[] quadVertices =
-        [
-            new MeshVertex() { Position = new Vector3(0.5f, 0.5f, 0.0f), Color = new Vector3(1.0f), TextureCoordinate = new Vector2(1.0f, 1.0f) },
-            new MeshVertex() { Position = new Vector3(0.5f, -0.5f, 0.0f), Color = new Vector3(1.0f), TextureCoordinate = new Vector2(1.0f, 0.0f) },
-            new MeshVertex() { Position = new Vector3(-0.5f, -0.5f, 0.0f), Color = new Vector3(1.0f), TextureCoordinate = new Vector2(0.0f, 0.0f) },
-            new MeshVertex() { Position = new Vector3(-0.5f, 0.5f, 0.0f), Color = new Vector3(1.0f), TextureCoordinate = new Vector2(0.0f, 1.0f) },
-        ];
-
-        int[] quadIndices =
-        [
-            0,
-            1,
-            3,
-            1,
-            2,
-            3,
-        ];
-
-        this.planeMesh = new Mesh(vertices, indices);
-        this.quadMesh = new Mesh(quadVertices, quadIndices);
-
-        this.texture = Texture.LoadTexture("Resources\\Textures\\texture.png");
-
-        this.depthTexture = new Texture(
-            width: 1024,
-            height: 1024,
-            IntPtr.Zero,
-            PixelFormat.DepthComponent,
-            PixelInternalFormat.DepthComponent,
-            PixelType.Float,
-            TextureMinFilter.Nearest,
-            TextureMagFilter.Nearest,
-            TextureWrapMode.Repeat,
-            TextureWrapMode.Repeat,
-            false);
-
-        this.renderTarget = new RenderTarget(this.depthTexture);
-
-        this.shaderProgram = new ShaderProgram(
+        this.shader = new ShaderProgram(
             File.ReadAllText("Resources\\Shaders\\shader.vert"),
             File.ReadAllText("Resources\\Shaders\\shader.frag"));
 
-        this.depthShaderProgram = new ShaderProgram(
+        this.depthShader = new ShaderProgram(
             File.ReadAllText("Resources\\Shaders\\depth.vert"),
             File.ReadAllText("Resources\\Shaders\\depth.frag"));
 
-        this.debugShaderProgram = new ShaderProgram(
+        this.debugShader = new ShaderProgram(
             File.ReadAllText("Resources\\Shaders\\debug.vert"),
             File.ReadAllText("Resources\\Shaders\\debug.frag"));
 
-        this.camera = new Camera(this, this.ClientSize.X, this.ClientSize.Y);
+        float[] planeVertices =
+        {
+             25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
+            -25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f,
+            -25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
 
-        this.lightPosition = new System.Numerics.Vector3(-2, 4, -1);
+             25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
+            -25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
+             25.0f, -0.5f, -25.0f,  0.0f, 1.0f, 0.0f,  25.0f, 25.0f,
+        };
 
-        this.controller = new ImGuiController(this, this.ClientSize.X, this.ClientSize.Y);
+        float[] cubeVertices = {
+			// back face
+			-1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+			 1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+			 1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // bottom-right
+			 1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
+			-1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
+			-1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // top-left
+			// front face
+			-1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+			 1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f, // bottom-right
+			 1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+			 1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
+			-1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f, // top-left
+			-1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
+			// left face
+			-1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+			-1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-left
+			-1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+			-1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
+			-1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+			-1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
+			// right face
+			 1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+			 1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+			 1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right
+			 1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
+			 1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
+			 1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left
+			 // bottom face
+			 -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+			  1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
+			  1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+			  1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
+			 -1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f, // bottom-right
+			 -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
+			 // top face
+			 -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+			  1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+			  1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right
+			  1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
+			 -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
+			 -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left
+		};
+
+        float[] quadVertices = {
+            -1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
+            -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+             1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+             1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+        };
+
+        this.quadVAO = GL.GenVertexArray();
+        this.quadVBO = GL.GenBuffer();
+
+        GL.BindVertexArray(quadVAO);
+
+        GL.BindBuffer(BufferTarget.ArrayBuffer, quadVBO);
+        GL.BufferData(BufferTarget.ArrayBuffer, quadVertices.Length * sizeof(float), quadVertices, BufferUsageHint.StaticDraw);
+
+        GL.EnableVertexAttribArray(0);
+        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), 0);
+
+        GL.EnableVertexAttribArray(1);
+        GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), 3 * sizeof(float));
+
+        GL.BindVertexArray(0);
+
+        this.planeVAO = CreateMesh(planeVertices);
+        this.cubeVAO = CreateMesh(cubeVertices);
+
+        this.woodTexture = Texture.LoadTexture("Resources\\Textures\\wood.png");
+
+        this.depthMapFBO = GL.GenFramebuffer();
+        this.depthMap = GL.GenTexture();
+
+        GL.BindTexture(TextureTarget.Texture2D, this.depthMap);
+        GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.DepthComponent, ShadowWidth, ShadowHeight, 0, PixelFormat.DepthComponent, PixelType.Float, IntPtr.Zero);
+
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMinFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Repeat);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Repeat);
+
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, this.depthMapFBO);
+        GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, TextureTarget.Texture2D, this.depthMap, 0);
+
+        GL.DrawBuffer(DrawBufferMode.None);
+        GL.ReadBuffer(ReadBufferMode.None);
+
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+
+        shader.Use();
+
+        shader.SetInt("diffuseTexture", 0);
+        shader.SetInt("shadowMap", 1);
+
+        debugShader.Use();
+        debugShader.SetInt("depthMap", 0);
+
+        this.lightPosition = new Vector3(-2.0f, 4.0f, -1.0f);
+
+        this.camera = new Camera(this, ClientSize.X, ClientSize.Y);
 
         base.OnLoad();
     }
@@ -146,70 +177,104 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
     protected override void OnRenderFrame(FrameEventArgs args)
     {
         GL.Enable(EnableCap.DepthTest);
-
-        GL.ClearColor(Color.Black);
+        GL.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-        var lightProjection = Matrix4.CreateOrthographicOffCenter(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 7.5f);
-        var lightView = Matrix4.LookAt(new Vector3(this.lightPosition.X, this.lightPosition.Y, this.lightPosition.Z), Vector3.Zero, Vector3.UnitY);
-        var lightSpace = lightProjection * lightView;
+        var lightProjection = Matrix4x4.CreateOrthographicOffCenter(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 7.5f);
+        var lightView = Matrix4x4.CreateLookAt(lightPosition, Vector3.Zero, Vector3.UnitY);
+        var lightSpace = lightView * lightProjection;
 
-        this.depthShaderProgram.Use();
-        this.depthShaderProgram.SetMatrix4("u_lightSpace", lightSpace);
+        depthShader.Use();
+        depthShader.SetMatrix4("lightSpaceMatrix", lightSpace);
 
-        GL.Viewport(0, 0, 1024, 1024);
-        this.renderTarget.Bind();
+        GL.Viewport(0, 0, ShadowWidth, ShadowHeight);
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, this.depthMapFBO);
 
-        this.RenderScene(this.depthShaderProgram);
+        GL.Clear(ClearBufferMask.DepthBufferBit);
 
-        this.renderTarget.Unbind();
+        this.RenderScene(this.depthShader);
 
-        GL.Viewport(0, 0, this.ClientSize.X, this.ClientSize.Y);
+        GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
+        GL.Viewport(0, 0, ClientSize.X, ClientSize.Y);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-        this.debugShaderProgram.Use();
-        this.debugShaderProgram.SetInt("depthMap", 0);
+        shader.Use();
 
-        this.depthTexture.Bind(0);
-        this.quadMesh.Draw();
+        shader.SetMatrix4("projection", camera.Projection);
+        shader.SetMatrix4("view", camera.View);
+        shader.SetVector3("viewPos", camera.Transform.Position);
+        shader.SetVector3("lightPos", this.lightPosition);
+        shader.SetMatrix4("lightSpaceMatrix", lightSpace);
 
-        // Afterwards, let's just render the scene as normal
-        this.shaderProgram.Use();
+        GL.ActiveTexture(TextureUnit.Texture1);
+        GL.BindTexture(TextureTarget.Texture2D, this.depthMap);
 
-        this.shaderProgram.SetMatrix4("u_projection", camera.Projection);
-        this.shaderProgram.SetMatrix4("u_view", camera.View);
+        this.RenderScene(this.shader);
 
-        this.RenderScene(this.shaderProgram);
+        //debugShader.Use();
 
-        ImGui.Begin("Tools");
+        //GL.ActiveTexture(TextureUnit.Texture0);
+        //GL.BindTexture(TextureTarget.Texture2D, this.depthMap);
 
-        ImGui.DragFloat3("Light Position", ref this.lightPosition);
-
-        ImGui.End();
-
-        this.controller.Render();
+        //GL.BindVertexArray(quadVAO);
+        //GL.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
 
         this.SwapBuffers();
-
         base.OnRenderFrame(args);
     }
 
     protected override void OnUpdateFrame(FrameEventArgs args)
     {
-        this.camera.Update(this.KeyboardState, this.MouseState);
-        this.controller.Update(this.KeyboardState, this.MouseState, 8.6f);
+        camera.Update(this.KeyboardState, this.MouseState);
         base.OnUpdateFrame(args);
     }
 
-    private void RenderScene(ShaderProgram shaderProgram)
+    private int CreateMesh(float[] vertices)
     {
-        shaderProgram.SetMatrix4("u_transform", Matrix4.Identity);
+        int vao = GL.GenVertexArray();
+        int vbo = GL.GenBuffer();
 
-        this.texture.Bind(0);
-        this.planeMesh.Draw();
+        GL.BindVertexArray(vao);
 
-        shaderProgram.SetMatrix4("u_transform", Matrix4.CreateTranslation(0, 10f, 0) * Matrix4.CreateRotationX(MathHelper.DegreesToRadians(45.0f)) * Matrix4.CreateScale(0.25f));
+        GL.BindBuffer(BufferTarget.ArrayBuffer, vbo);
+        GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.StaticDraw);
 
-        this.planeMesh.Draw();
+        GL.EnableVertexAttribArray(0);
+        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 8 * sizeof(float), 0);
+
+        GL.EnableVertexAttribArray(1);
+        GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, 8 * sizeof(float), 3 * sizeof(float));
+
+        GL.EnableVertexAttribArray(2);
+        GL.VertexAttribPointer(2, 2, VertexAttribPointerType.Float, false, 8 * sizeof(float), 6 * sizeof(float));
+
+        GL.BindVertexArray(0);
+
+        return vao;
+    }
+
+    private void RenderScene(ShaderProgram shader)
+    {
+        this.woodTexture.Bind(0);
+
+        var model = Matrix4x4.Identity;
+        shader.SetMatrix4("model", model);
+
+        GL.BindVertexArray(this.planeVAO);
+        GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+
+        model = Matrix4x4.Identity;
+        model *= Matrix4x4.CreateTranslation(0, 1.5f, 0) * Matrix4x4.CreateScale(0.5f);
+        shader.SetMatrix4("model", model);
+
+        GL.BindVertexArray(this.cubeVAO);
+        GL.DrawArrays(PrimitiveType.Triangles, 0, 36);
+
+        model = Matrix4x4.Identity;
+        model *= Matrix4x4.CreateTranslation(10.0f, 0, 1.0f) * Matrix4x4.CreateScale(0.5f);
+        shader.SetMatrix4("model", model);
+
+        GL.BindVertexArray(this.cubeVAO);
+        GL.DrawArrays(PrimitiveType.Triangles, 0, 36);
     }
 }

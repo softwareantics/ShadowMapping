@@ -5,8 +5,8 @@
 namespace ShadowMapping;
 
 using System;
+using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
-using OpenTK.Mathematics;
 
 public sealed class ShaderProgram : IDisposable
 {
@@ -58,10 +58,37 @@ public sealed class ShaderProgram : IDisposable
         GL.Uniform1(this.GetUniformLocation(name), value);
     }
 
-    public void SetMatrix4(string name, Matrix4 matrix)
+    public void SetMatrix4(string name, Matrix4x4 matrix)
     {
         ObjectDisposedException.ThrowIf(this.isDisposed, this);
-        GL.UniformMatrix4(this.GetUniformLocation(name), false, ref matrix);
+
+        float[] values =
+        [
+            matrix.M11,
+            matrix.M12,
+            matrix.M13,
+            matrix.M14,
+            matrix.M21,
+            matrix.M22,
+            matrix.M23,
+            matrix.M24,
+            matrix.M31,
+            matrix.M32,
+            matrix.M33,
+            matrix.M34,
+            matrix.M41,
+            matrix.M42,
+            matrix.M43,
+            matrix.M44,
+        ];
+
+        GL.UniformMatrix4(this.GetUniformLocation(name), 1, false, values);
+    }
+
+    public void SetVector3(string name, Vector3 vector)
+    {
+        ObjectDisposedException.ThrowIf(this.isDisposed, this);
+        GL.Uniform3(this.GetUniformLocation(name), vector.X, vector.Y, vector.Z);
     }
 
     public void Use()

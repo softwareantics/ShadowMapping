@@ -1,12 +1,10 @@
-#version 460
+#version 330 core
+layout (location = 0) in vec3 aPos;
 
-layout (location = 0) in vec3 in_position;
-
-uniform mat4 u_lightSpace;
-uniform mat4 u_transform;
+uniform mat4 lightSpaceMatrix;
+uniform mat4 model;
 
 void main()
 {
-    gl_Position = u_lightSpace * u_transform * vec4(in_position, 1.0);
+    gl_Position = lightSpaceMatrix * model * vec4(aPos, 1.0);
 }
-

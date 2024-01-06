@@ -16,7 +16,7 @@ internal static class Program
         var nativeWindowSettings = new NativeWindowSettings()
         {
             API = ContextAPI.OpenGL,
-            APIVersion = new Version(4, 6),
+            APIVersion = new Version(3, 3),
             AutoLoadBindings = true,
             ClientSize = new Vector2i(1280, 720),
             Flags = ContextFlags.ForwardCompatible,

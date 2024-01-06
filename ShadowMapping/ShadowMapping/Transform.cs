@@ -4,7 +4,7 @@
 
 namespace ShadowMapping;
 
-using OpenTK.Mathematics;
+using System.Numerics;
 
 public class Transform
 {
@@ -51,21 +51,21 @@ public class Transform
         get { return Vector3.Normalize(Vector3.Transform(Vector3.UnitY, this.Rotation)); }
     }
 
-    public Matrix4 CreateTransformationMatrix()
+    public Matrix4x4 CreateTransformationMatrix()
     {
-        return Matrix4.CreateScale(this.Scale) *
-               Matrix4.CreateFromQuaternion(this.Rotation) *
-               Matrix4.CreateTranslation(this.Position);
+        return Matrix4x4.CreateScale(this.Scale) *
+               Matrix4x4.CreateFromQuaternion(this.Rotation) *
+               Matrix4x4.CreateTranslation(this.Position);
     }
 
-    public Matrix4 CreateViewMatrix(Vector3 cameraUp)
+    public Matrix4x4 CreateViewMatrix(Vector3 cameraUp)
     {
-        return Matrix4.LookAt(this.Position, this.Position + this.Forward, cameraUp);
+        return Matrix4x4.CreateLookAt(this.Position, this.Position + this.Forward, cameraUp);
     }
 
     public void Rotate(Vector3 axis, float radians)
     {
-        this.Rotation = Quaternion.FromAxisAngle(axis, radians) * this.Rotation;
+        this.Rotation = Quaternion.CreateFromAxisAngle(axis, radians) * this.Rotation;
         this.Rotation = Quaternion.Normalize(this.Rotation);
     }
 
