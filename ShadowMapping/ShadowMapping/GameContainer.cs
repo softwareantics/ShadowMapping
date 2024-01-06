@@ -6,17 +6,17 @@ namespace ShadowMapping;
 
 using System;
 using System.IO;
-using System.Numerics;
 using OpenTK.Graphics.OpenGL4;
+using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 
 public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
     : GameWindow(gameWindowSettings, nativeWindowSettings)
 {
-    private const int ShadowHeight = 1024;
+    private const int ShadowHeight = 2048;
 
-    private const int ShadowWidth = 1024;
+    private const int ShadowWidth = 2048;
 
     private Camera camera;
 
@@ -138,7 +138,7 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         this.planeVAO = CreateMesh(planeVertices);
         this.cubeVAO = CreateMesh(cubeVertices);
 
-        this.woodTexture = Texture.LoadTexture("Resources\\Textures\\wood.png");
+        this.woodTexture = Texture.LoadTexture("Resources\\Textures\\texture.png");
 
         this.depthMapFBO = GL.GenFramebuffer();
         this.depthMap = GL.GenTexture();
@@ -148,8 +148,11 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
 
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
         GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMinFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Repeat);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Repeat);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToBorder);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToBorder);
+
+        float[] borderColor = [1.0f, 1.0f, 1.0f, 1.0f];
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBorderColor, borderColor);
 
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, this.depthMapFBO);
         GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.DepthAttachment, TextureTarget.Texture2D, this.depthMap, 0);
@@ -180,8 +183,8 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         GL.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-        var lightProjection = Matrix4x4.CreateOrthographicOffCenter(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 7.5f);
-        var lightView = Matrix4x4.CreateLookAt(lightPosition, Vector3.Zero, Vector3.UnitY);
+        var lightProjection = Matrix4.CreateOrthographicOffCenter(-40, 40, -40, 40, -40, 40);
+        var lightView = Matrix4.LookAt(lightPosition, Vector3.Zero, Vector3.UnitY);
         var lightSpace = lightView * lightProjection;
 
         depthShader.Use();
@@ -192,7 +195,12 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
 
         GL.Clear(ClearBufferMask.DepthBufferBit);
 
+        GL.Enable(EnableCap.CullFace);
+        GL.CullFace(CullFaceMode.Front);
+
         this.RenderScene(this.depthShader);
+
+        GL.Disable(EnableCap.CullFace);
 
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         GL.Viewport(0, 0, ClientSize.X, ClientSize.Y);
@@ -210,14 +218,6 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         GL.BindTexture(TextureTarget.Texture2D, this.depthMap);
 
         this.RenderScene(this.shader);
-
-        //debugShader.Use();
-
-        //GL.ActiveTexture(TextureUnit.Texture0);
-        //GL.BindTexture(TextureTarget.Texture2D, this.depthMap);
-
-        //GL.BindVertexArray(quadVAO);
-        //GL.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
 
         this.SwapBuffers();
         base.OnRenderFrame(args);
@@ -257,21 +257,21 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
     {
         this.woodTexture.Bind(0);
 
-        var model = Matrix4x4.Identity;
+        var model = Matrix4.Identity;
         shader.SetMatrix4("model", model);
 
         GL.BindVertexArray(this.planeVAO);
         GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
 
-        model = Matrix4x4.Identity;
-        model *= Matrix4x4.CreateTranslation(0, 1.5f, 0) * Matrix4x4.CreateScale(0.5f);
+        model = Matrix4.Identity;
+        model *= Matrix4.CreateTranslation(0, 1.5f, 0) * Matrix4.CreateScale(0.5f);
         shader.SetMatrix4("model", model);
 
         GL.BindVertexArray(this.cubeVAO);
         GL.DrawArrays(PrimitiveType.Triangles, 0, 36);
 
-        model = Matrix4x4.Identity;
-        model *= Matrix4x4.CreateTranslation(10.0f, 0, 1.0f) * Matrix4x4.CreateScale(0.5f);
+        model = Matrix4.Identity;
+        model *= Matrix4.CreateTranslation(10.0f, 4, 1.0f) * Matrix4.CreateScale(0.5f);
         shader.SetMatrix4("model", model);
 
         GL.BindVertexArray(this.cubeVAO);

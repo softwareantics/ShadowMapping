@@ -20,7 +20,7 @@ internal static class Program
             AutoLoadBindings = true,
             ClientSize = new Vector2i(1280, 720),
             Flags = ContextFlags.ForwardCompatible,
-            NumberOfSamples = 8,
+            NumberOfSamples = 16,
             Profile = ContextProfile.Core,
             StartVisible = true,
             Title = "OpenTK Shadow Mapping",

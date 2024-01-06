@@ -6,7 +6,7 @@ namespace ShadowMapping;
 
 using System;
 using System.Drawing;
-using System.Numerics;
+using OpenTK.Mathematics;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 
@@ -31,20 +31,20 @@ public sealed class Camera
         this.Transform = new Transform()
         {
             Position = new Vector3(0, 50, 0),
-            Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, OpenTK.Mathematics.MathHelper.DegreesToRadians(45.0f)),
+            Rotation = Quaternion.FromAxisAngle(Vector3.UnitY, OpenTK.Mathematics.MathHelper.DegreesToRadians(45.0f)),
         };
 
         this.isLocked = false;
     }
 
-    public Matrix4x4 Projection
+    public Matrix4 Projection
     {
-        get { return Matrix4x4.CreatePerspectiveFieldOfView(OpenTK.Mathematics.MathHelper.DegreesToRadians(70.0f), this.width / this.height, 0.1f, 1000.0f); }
+        get { return Matrix4.CreatePerspectiveFieldOfView(OpenTK.Mathematics.MathHelper.DegreesToRadians(45.0f), this.width / this.height, 0.1f, 1000.0f); }
     }
 
     public Transform Transform { get; }
 
-    public Matrix4x4 View
+    public Matrix4 View
     {
         get { return this.Transform.CreateViewMatrix(Vector3.UnitY); }
     }
