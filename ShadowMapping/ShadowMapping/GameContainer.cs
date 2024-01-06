@@ -7,6 +7,7 @@ namespace ShadowMapping;
 using System;
 using System.Drawing;
 using System.IO;
+using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -17,13 +18,15 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
 {
     private Camera camera;
 
+    private ImGuiController controller;
+
     private ShaderProgram debugShaderProgram;
 
     private ShaderProgram depthShaderProgram;
 
     private Texture depthTexture;
 
-    private Vector3 lightPosition;
+    private System.Numerics.Vector3 lightPosition;
 
     private Mesh planeMesh;
 
@@ -133,7 +136,9 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
 
         this.camera = new Camera(this, this.ClientSize.X, this.ClientSize.Y);
 
-        this.lightPosition = new Vector3(-2, 4, -1);
+        this.lightPosition = new System.Numerics.Vector3(-2, 4, -1);
+
+        this.controller = new ImGuiController(this, this.ClientSize.X, this.ClientSize.Y);
 
         base.OnLoad();
     }
@@ -146,7 +151,7 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
         var lightProjection = Matrix4.CreateOrthographicOffCenter(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 7.5f);
-        var lightView = Matrix4.LookAt(this.lightPosition, Vector3.Zero, Vector3.UnitY);
+        var lightView = Matrix4.LookAt(new Vector3(this.lightPosition.X, this.lightPosition.Y, this.lightPosition.Z), Vector3.Zero, Vector3.UnitY);
         var lightSpace = lightProjection * lightView;
 
         this.depthShaderProgram.Use();
@@ -176,6 +181,14 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
 
         this.RenderScene(this.shaderProgram);
 
+        ImGui.Begin("Tools");
+
+        ImGui.DragFloat3("Light Position", ref this.lightPosition);
+
+        ImGui.End();
+
+        this.controller.Render();
+
         this.SwapBuffers();
 
         base.OnRenderFrame(args);
@@ -184,6 +197,7 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
     protected override void OnUpdateFrame(FrameEventArgs args)
     {
         this.camera.Update(this.KeyboardState, this.MouseState);
+        this.controller.Update(this.KeyboardState, this.MouseState, 8.6f);
         base.OnUpdateFrame(args);
     }
 

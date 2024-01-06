@@ -31,7 +31,7 @@ internal static class Program
 
         var gameWindowSettings = new GameWindowSettings()
         {
-            UpdateFrequency = 120.0f,
+            UpdateFrequency = 60.0f,
         };
 
         using (var game = new GameContainer(gameWindowSettings, nativeWindowSettings))
