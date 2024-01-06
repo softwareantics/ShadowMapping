@@ -6,6 +6,7 @@ namespace ShadowMapping;
 
 using System;
 using System.IO;
+using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -20,6 +21,8 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
 
     private Camera camera;
 
+    private ImGuiController controller;
+
     private int cubeVAO;
 
     private ShaderProgram debugShader;
@@ -30,7 +33,13 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
 
     private ShaderProgram depthShader;
 
+    private Vector3 lightColor;
+
     private Vector3 lightPosition;
+
+    private ModelLoader loader;
+
+    private ModelResource modelResource;
 
     private int planeVAO;
 
@@ -39,6 +48,8 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
     private int quadVBO;
 
     private ShaderProgram shader;
+
+    private float temp = 0;
 
     private Texture woodTexture;
 
@@ -170,10 +181,15 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         debugShader.Use();
         debugShader.SetInt("depthMap", 0);
 
-        this.lightPosition = new Vector3(-2.0f, 4.0f, -1.0f);
+        this.lightPosition = new Vector3(2.0f, 8.0f, -1.5f);
+        this.lightColor = new Vector3(0.6f, 0.4f, 0.2f);
 
         this.camera = new Camera(this, ClientSize.X, ClientSize.Y);
 
+        this.loader = new ModelLoader();
+
+        this.modelResource = this.loader.LoadResource("Resources\\Models\\Sponza\\sponza.obj");
+        this.controller = new ImGuiController(this, ClientSize.X, ClientSize.Y);
         base.OnLoad();
     }
 
@@ -182,6 +198,11 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         GL.Enable(EnableCap.DepthTest);
         GL.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+
+        var lightTransform = new Transform()
+        {
+            Rotation = Quaternion.FromAxisAngle(Vector3.UnitX, MathHelper.DegreesToRadians(45.0f)),
+        };
 
         var lightProjection = Matrix4.CreateOrthographicOffCenter(-40, 40, -40, 40, -40, 40);
         var lightView = Matrix4.LookAt(lightPosition, Vector3.Zero, Vector3.UnitY);
@@ -213,11 +234,27 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         shader.SetVector3("viewPos", camera.Transform.Position);
         shader.SetVector3("lightPos", this.lightPosition);
         shader.SetMatrix4("lightSpaceMatrix", lightSpace);
+        shader.SetVector3("lightColor", this.lightColor);
 
         GL.ActiveTexture(TextureUnit.Texture1);
         GL.BindTexture(TextureTarget.Texture2D, this.depthMap);
 
         this.RenderScene(this.shader);
+
+        ImGui.Begin("Tools");
+
+        var pos = new System.Numerics.Vector3(lightPosition.X, lightPosition.Y, lightPosition.Z);
+        var col = new System.Numerics.Vector3(lightColor.X, lightColor.Y, lightColor.Z);
+
+        ImGui.DragFloat3("Light Position", ref pos, 0.5f);
+        ImGui.DragFloat3("Light Color", ref col, 0.1f);
+
+        this.lightPosition = new Vector3(pos.X, pos.Y, pos.Z);
+        this.lightColor = new Vector3(col.X, col.Y, col.Z);
+
+        ImGui.End();
+
+        this.controller.Render();
 
         this.SwapBuffers();
         base.OnRenderFrame(args);
@@ -225,6 +262,7 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
 
     protected override void OnUpdateFrame(FrameEventArgs args)
     {
+        controller.Update(KeyboardState, MouseState, 8.6f);
         camera.Update(this.KeyboardState, this.MouseState);
         base.OnUpdateFrame(args);
     }
@@ -257,24 +295,41 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
     {
         this.woodTexture.Bind(0);
 
-        var model = Matrix4.Identity;
+        var model = Matrix4.CreateScale(1f);
         shader.SetMatrix4("model", model);
 
-        GL.BindVertexArray(this.planeVAO);
-        GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+        foreach (var res in modelResource.Models)
+        {
+            var mesh = res.Mesh;
+            var material = res.Texture;
 
-        model = Matrix4.Identity;
-        model *= Matrix4.CreateTranslation(0, 1.5f, 0) * Matrix4.CreateScale(0.5f);
-        shader.SetMatrix4("model", model);
+            if (material == null)
+            {
+                woodTexture.Bind(0);
+            }
+            else
+            {
+                material.Bind(0);
+            }
 
-        GL.BindVertexArray(this.cubeVAO);
-        GL.DrawArrays(PrimitiveType.Triangles, 0, 36);
+            mesh.Draw();
+        }
 
-        model = Matrix4.Identity;
-        model *= Matrix4.CreateTranslation(10.0f, 4, 1.0f) * Matrix4.CreateScale(0.5f);
-        shader.SetMatrix4("model", model);
+        //GL.BindVertexArray(this.planeVAO);
+        //GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
 
-        GL.BindVertexArray(this.cubeVAO);
-        GL.DrawArrays(PrimitiveType.Triangles, 0, 36);
+        //model = Matrix4.Identity;
+        //model *= Matrix4.CreateTranslation(0, 1.5f, 0) * Matrix4.CreateScale(0.5f);
+        //shader.SetMatrix4("model", model);
+
+        //GL.BindVertexArray(this.cubeVAO);
+        //GL.DrawArrays(PrimitiveType.Triangles, 0, 36);
+
+        //model = Matrix4.Identity;
+        //model *= Matrix4.CreateTranslation(10.0f, 4, 1.0f) * Matrix4.CreateScale(0.5f);
+        //shader.SetMatrix4("model", model);
+
+        //GL.BindVertexArray(this.cubeVAO);
+        //GL.DrawArrays(PrimitiveType.Triangles, 0, 36);
     }
 }
