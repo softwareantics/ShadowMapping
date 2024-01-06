@@ -40,7 +40,8 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         float fieldDepth = 10.0f;
         float fieldWidth = 10.0f;
 
-        MeshVertex[] vertices = [
+        MeshVertex[] vertices =
+        [
             new MeshVertex()
             {
                 Position = new Vector3(-fieldWidth, 0.0f, -fieldDepth),
@@ -132,7 +133,7 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
 
         this.camera = new Camera(this, this.ClientSize.X, this.ClientSize.Y);
 
-        this.lightPosition = new Vector3(10);
+        this.lightPosition = new Vector3(-2, 4, -1);
 
         base.OnLoad();
     }
@@ -144,7 +145,7 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         GL.ClearColor(Color.Black);
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-        var lightProjection = Matrix4.CreateOrthographicOffCenter(-1000.0f, 1000.0f, -1000.0f, 1000.0f, 1.0f, 7.5f);
+        var lightProjection = Matrix4.CreateOrthographicOffCenter(-10.0f, 10.0f, -10.0f, 10.0f, 1.0f, 7.5f);
         var lightView = Matrix4.LookAt(this.lightPosition, Vector3.Zero, Vector3.UnitY);
         var lightSpace = lightProjection * lightView;
 
@@ -167,6 +168,14 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         this.depthTexture.Bind(0);
         this.quadMesh.Draw();
 
+        // Afterwards, let's just render the scene as normal
+        this.shaderProgram.Use();
+
+        this.shaderProgram.SetMatrix4("u_projection", camera.Projection);
+        this.shaderProgram.SetMatrix4("u_view", camera.View);
+
+        this.RenderScene(this.shaderProgram);
+
         this.SwapBuffers();
 
         base.OnRenderFrame(args);
@@ -185,11 +194,7 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         this.texture.Bind(0);
         this.planeMesh.Draw();
 
-        shaderProgram.SetMatrix4("u_transform", Matrix4.CreateTranslation(0, 5f, 0) * Matrix4.CreateScale(0.25f));
-
-        this.planeMesh.Draw();
-
-        shaderProgram.SetMatrix4("u_transform", Matrix4.CreateTranslation(this.lightPosition) * Matrix4.CreateScale(0.10f));
+        shaderProgram.SetMatrix4("u_transform", Matrix4.CreateTranslation(0, 10f, 0) * Matrix4.CreateRotationX(MathHelper.DegreesToRadians(45.0f)) * Matrix4.CreateScale(0.25f));
 
         this.planeMesh.Draw();
     }
