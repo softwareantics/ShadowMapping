@@ -220,7 +220,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Resources\Shaders\shader.frag">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Resources\Textures\texture.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

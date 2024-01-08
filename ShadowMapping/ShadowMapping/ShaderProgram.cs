@@ -52,6 +52,12 @@ public sealed class ShaderProgram : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    public void SetFloat(string name, float value)
+    {
+        ObjectDisposedException.ThrowIf(this.isDisposed, this);
+        GL.Uniform1(this.GetUniformLocation(name), value);
+    }
+
     public void SetInt(string name, int value)
     {
         ObjectDisposedException.ThrowIf(this.isDisposed, this);

@@ -28,15 +28,29 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
 
     private ShaderProgram debugShader;
 
+    private float density = 0.113561f;
+
     private int depthMap;
 
     private int depthMapFBO;
 
     private ShaderProgram depthShader;
 
+    private float end;
+
+    private float exposure;
+
+    private Vector3 fogColor = new Vector3(0.3f);
+
+    private float gamma;
+
+    private int hdrFrameBuffer;
+
+    private int hdrTexture;
+
     private Vector3 lightColor;
 
-    private Vector3 lightPosition;
+    private Vector3 lightDirection;
 
     private ModelLoader loader;
 
@@ -44,9 +58,11 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
 
     private ShaderProgram shader;
 
-    private float temp = 0;
+    private float start;
 
     private Texture texture;
+
+    private int type = 2;
 
     protected override void OnLoad()
     {
@@ -94,7 +110,7 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         debugShader.Use();
         debugShader.SetInt("depthMap", 0);
 
-        this.lightPosition = new Vector3(2.0f, 8.0f, -1.5f);
+        this.lightDirection = new Vector3(2.0f, 8.0f, -1.5f);
         this.lightColor = new Vector3(0.6f, 0.4f, 0.2f);
 
         this.camera = new Camera(this, ClientSize.X, ClientSize.Y);
@@ -104,6 +120,9 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         this.controller = new ImGuiController(this, ClientSize.X, ClientSize.Y);
 
         this.modelResource = loader.LoadResource("Resources\\Models\\Sponza\\sponza.obj");
+
+        this.exposure = 0.1f;
+        this.gamma = 2.2f;
 
         base.OnLoad();
     }
@@ -115,7 +134,7 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
         var lightProjection = Matrix4.CreateOrthographicOffCenter(-40, 40, -40, 40, -40, 40);
-        var lightView = Matrix4.LookAt(lightPosition, Vector3.Zero, Vector3.UnitY);
+        var lightView = Matrix4.LookAt(lightDirection, Vector3.Zero, Vector3.UnitY);
         var lightSpace = lightView * lightProjection;
 
         depthShader.Use();
@@ -139,9 +158,17 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
         shader.SetMatrix4("projection", camera.Projection);
         shader.SetMatrix4("view", camera.View);
         shader.SetVector3("viewPos", camera.Transform.Position);
-        shader.SetVector3("lightPos", this.lightPosition);
+        shader.SetVector3("lightDir", this.lightDirection);
         shader.SetMatrix4("lightSpaceMatrix", lightSpace);
         shader.SetVector3("lightColor", this.lightColor);
+
+        shader.SetVector3("fog.color", fogColor);
+        shader.SetFloat("fog.density", density);
+        shader.SetFloat("fog.start", start);
+        shader.SetFloat("fog.end", end);
+        shader.SetInt("fog.type", type);
+        shader.SetFloat("gamma", gamma);
+        shader.SetFloat("exposure", exposure);
 
         GL.ActiveTexture(TextureUnit.Texture1);
         GL.BindTexture(TextureTarget.Texture2D, this.depthMap);
@@ -150,14 +177,24 @@ public sealed class GameContainer(GameWindowSettings gameWindowSettings, NativeW
 
         ImGui.Begin("Tools");
 
-        var pos = new System.Numerics.Vector3(lightPosition.X, lightPosition.Y, lightPosition.Z);
+        var pos = new System.Numerics.Vector3(lightDirection.X, lightDirection.Y, lightDirection.Z);
         var col = new System.Numerics.Vector3(lightColor.X, lightColor.Y, lightColor.Z);
 
-        ImGui.DragFloat3("Light Position", ref pos, 0.5f);
-        ImGui.DragFloat3("Light Color", ref col, 0.1f);
+        var fogCol = new System.Numerics.Vector3(fogColor.X, fogColor.Y, fogColor.Z);
 
-        this.lightPosition = new Vector3(pos.X, pos.Y, pos.Z);
+        ImGui.DragFloat3("Light Position", ref pos, 0.5f);
+        ImGui.ColorEdit3("Light Color", ref col);
+        ImGui.ColorEdit3("Fog Color", ref fogCol);
+        ImGui.DragInt("Fog Type", ref type, 0.1f);
+        ImGui.DragFloat("Fog Desntiy", ref density, 0.01f);
+        ImGui.DragFloat("Fog Start", ref start, 0.1f);
+        ImGui.DragFloat("Fog End", ref end, 0.1f);
+        ImGui.DragFloat("exposure", ref exposure, 0.1f);
+        ImGui.DragFloat("gamma", ref gamma, 0.1f);
+
+        this.lightDirection = new Vector3(pos.X, pos.Y, pos.Z);
         this.lightColor = new Vector3(col.X, col.Y, col.Z);
+        this.fogColor = new Vector3(fogCol.X, fogCol.Y, fogCol.Z);
 
         ImGui.End();
 
