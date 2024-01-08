@@ -1,22 +1,5 @@
-# Project Name
+# Shadow Mapping in OpenTK
 
-This is a *WIP* cross-platform project developed in C#.
+This project is just a simple test project I've created to test out shadow mapping using OpenGL/OpenTK to later be added into [Final Engine](https://github.com/softwareantics/FinalEngine).
 
-## Build Instructions
-
-Below is a list of prerequisites and build instructions.
-
-### Prerequisites
-
-- TODO
-
-### Windows, Mac and Linux
-
-1. Download or clone the repository.
-2. Open `ProjectName.sln` your favourite IDE.
-3. Build the solution (or `dotnet build`).
-4. Run the appropriate *Launcher* (or `dotnet run`).
-
-## Download
-
-Release builds will be available as NuGet packages.
+![image](https://github.com/softwareantics/ShadowMapping/assets/50978201/32817e0e-eda3-458e-b334-ed79f5efa81b)
